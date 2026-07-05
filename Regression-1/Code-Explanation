@@ -4,3 +4,10 @@ import numpy as np # used for numerical calucations and array operations
 import pandas as pd # used for the manipulating data, data operations
 import seaborn as sns # used for the statistcal visulaization of the data
 import matplotlib.pyplot as plt # creating graphs and plots and visulazing trends and distributions 
+
+df = pd.read_csv("insurance.xlsx", sep="\t")
+print(df.head())
+
+df.head()
+
+
