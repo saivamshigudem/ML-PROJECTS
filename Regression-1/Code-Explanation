@@ -1,13 +1,178 @@
-## import the all the pre-required libraries that are required 
+# Import required libraries
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-import numpy as np # used for numerical calucations and array operations
-import pandas as pd # used for the manipulating data, data operations
-import seaborn as sns # used for the statistcal visulaization of the data
-import matplotlib.pyplot as plt # creating graphs and plots and visulazing trends and distributions 
-
+# Load the dataset
 df = pd.read_csv("insurance.xlsx", sep="\t")
+
+# Display the first 5 rows
 print(df.head())
 
-df.head()
+# View dataset information
+df.info()
 
+# Check the dataset dimensions (rows, columns)
+df.shape
 
+# Find correlation between numerical columns
+df.corr()
+
+# Create lists to store column names based on data type
+categories = []
+continuous = []
+check = []
+
+# Store data types of all columns
+d_types = dict(df.dtypes)
+d_types
+
+# Import functions to identify data types
+from pandas.api.types import (
+    is_string_dtype,
+    is_float_dtype,
+    is_integer_dtype,
+)
+
+# Separate columns into categorical, float, and integer lists
+for col in df.columns:
+    if is_string_dtype(df[col]):
+        categories.append(col)
+    elif is_float_dtype(df[col]):
+        continuous.append(col)
+    elif is_integer_dtype(df[col]):
+        check.append(col)
+
+# Display separated column names
+print(categories, continuous, check)
+
+# Display unique values and their counts for categorical columns
+for col in df.columns:
+    if is_string_dtype(df[col]):
+        print(f"<==============={col}=============>")
+        print(df[col].value_counts())
+
+# Display statistical summary of the dataset
+df.describe()
+
+# Display correlation matrix for numerical columns only
+df.corr(numeric_only=True)
+
+# Check for missing values
+df.isnull().sum()
+
+# Remove the 'region' column as it is not used for training
+df.drop('region', axis=1, inplace=True)
+
+# Convert categorical values into numeric format
+df['sex'] = df['sex'].replace({'female': 0, 'male': 1})
+df['smoker'] = df['smoker'].replace({'no': 0, 'yes': 1})
+
+# Separate features (X) and target variable (y)
+X = df.drop('expenses', axis=1)
+y = df['expenses']
+
+# Verify the converted values
+print(df['sex'].unique())
+print(df['smoker'].unique())
+
+# Split the dataset into training and testing sets
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# Import ElasticNet regression model
+from sklearn.linear_model import ElasticNet
+
+# Create the base ElasticNet model
+enr_base = ElasticNet()
+
+# Train the model
+enr_base.fit(X_train, y_train)
+
+# Predict on training and testing data
+train_predictions = enr_base.predict(X_train)
+test_predictions = enr_base.predict(X_test)
+
+# Evaluate the model using R² score
+print("Train R2:", enr_base.score(X_train, y_train))
+print("Test R2:", enr_base.score(X_test, y_test))
+
+# Perform 5-Fold Cross Validation
+from sklearn.model_selection import cross_val_score
+print("Cross Validation Score:",
+      cross_val_score(enr_base, X, y, cv=5).mean())
+
+# Import GridSearchCV for hyperparameter tuning
+from sklearn.model_selection import GridSearchCV
+
+# Create a fresh ElasticNet model
+estimator = ElasticNet()
+
+# Define parameter values to search
+param_grid = {
+    "alpha": [0.1, 0.2, 1, 2, 3, 5, 10],
+    "l1_ratio": [0.1, 0.5, 0.75, 0.9, 0.95, 1]
+}
+
+# Perform Grid Search with 5-Fold Cross Validation
+model_hp = GridSearchCV(
+    estimator,
+    param_grid,
+    cv=5,
+    scoring='neg_mean_squared_error'
+)
+
+# Train Grid Search
+model_hp.fit(X_train, y_train)
+
+# Display the best hyperparameters
+model_hp.best_params_
+
+# Create the optimized ElasticNet model
+enr_best = ElasticNet(alpha=10, l1_ratio=1)
+
+# Train the optimized model
+enr_best.fit(X_train, y_train)
+
+# Display the intercept and feature coefficients
+print("Intercept:", enr_best.intercept_)
+print("Coefficients:", enr_best.coef_)
+
+# Predict using the optimized model
+train_predictions = enr_best.predict(X_train)
+test_predictions = enr_best.predict(X_test)
+
+# Evaluate the optimized model
+print("Train R2:", enr_best.score(X_train, y_train))
+print("Test R2:", enr_best.score(X_test, y_test))
+print("Cross Validation Score:",
+      cross_val_score(enr_best, X, y, cv=5).mean())
+
+# Sample input for prediction
+input_data = {
+    "age": 31,
+    "sex": "female",
+    "bmi": 25.74,
+    "children": 0,
+    "smoker": "no",
+    "region": "northeast"
+}
+
+# Convert input into a DataFrame
+df_test = pd.DataFrame(input_data, index=[0])
+
+# Remove the region column (same preprocessing as training data)
+df_test = df_test.drop("region", axis=1)
+
+# Convert categorical values into numeric format
+df_test["sex"] = df_test["sex"].replace({"female": 0, "male": 1})
+df_test["smoker"] = df_test["smoker"].replace({"no": 0, "yes": 1})
+
+# Predict insurance expenses for the new input
+prediction = enr_best.predict(df_test)
+
+# Display the predicted expense
+print(prediction)
